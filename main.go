@@ -29,10 +29,7 @@ func getHello(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "Hello, HTTP!\n")
 }
 func main() {
-	var emailCreds EmailCreds
-	json.Unmarshal([]byte(rawJson), &emailCreds)
-	fmt.Printf("Email address: %s\n", emailCreds.Address)
-	fmt.Printf("Email password: %s\n", emailCreds.Password)
+	getEmailCreds()
 	http.HandleFunc("/hello", getHello)
 
 	err := http.ListenAndServe(":3333", nil)
@@ -42,4 +39,11 @@ func main() {
 		fmt.Printf("error starting server: %s\n", err)
 		os.Exit(1)
 	}
+}
+
+func getEmailCreds() {
+	var emailCreds EmailCreds
+	json.Unmarshal([]byte(rawJson), &emailCreds)
+	fmt.Printf("Email address: %s\n", emailCreds.Address)
+	fmt.Printf("Email password: %s\n", emailCreds.Password)
 }
