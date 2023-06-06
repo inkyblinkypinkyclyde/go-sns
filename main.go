@@ -7,17 +7,21 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/smtp"
 	"os"
 )
 
 type EmailCreds struct {
 	Address  string
 	Password string
+	SmtpHost string
+	SmtpPort string
 }
 
 var (
 	//go:embed emailcreds.json
-	rawJson string
+	rawJson    string
+	emailCreds EmailCreds
 )
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
@@ -30,6 +34,7 @@ func getHello(w http.ResponseWriter, r *http.Request) {
 }
 func main() {
 	getEmailCreds()
+	sendMail()
 	http.HandleFunc("/hello", getHello)
 
 	err := http.ListenAndServe(":3333", nil)
@@ -42,8 +47,21 @@ func main() {
 }
 
 func getEmailCreds() {
-	var emailCreds EmailCreds
 	json.Unmarshal([]byte(rawJson), &emailCreds)
 	fmt.Printf("Email address: %s\n", emailCreds.Address)
 	fmt.Printf("Email password: %s\n", emailCreds.Password)
+	fmt.Printf("SMTP Host is : %s\n", emailCreds.SmtpHost)
+	fmt.Printf("SMTP Port is : %s\n", emailCreds.SmtpPort)
 }
+
+func sendMail() {
+	message := []byte("This is just a test")
+	auth := smtp.PlainAuth("", emailCreds.Address, emailCreds.Password, emailCreds.SmtpHost)
+	err := smtp.SendMail(emailCreds.SmtpHost+":"+emailCreds.SmtpPort, auth, emailCreds.Address, []string{emailCreds.Address}, message)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Email Sent Successfully")
+}
+func logEvent() {}
