@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	_ "embed"
 	"encoding/json"
@@ -10,6 +11,9 @@ import (
 	"net/http"
 	"net/smtp"
 	"os"
+	"time"
+
+	events "go-sns/models"
 
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -28,6 +32,7 @@ var (
 	//go:embed emailcreds.json
 	rawJson    string
 	emailCreds EmailCreds
+	db         *bun.DB
 )
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
@@ -35,12 +40,14 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "This is my website!\n")
 }
 func getHello(w http.ResponseWriter, r *http.Request) {
+	logEvent()
 	fmt.Printf("got /hello request\n")
 	io.WriteString(w, "Hello, HTTP!\n")
 }
 func main() {
 	getEmailCreds()
 	sendMail("This is just a test")
+	connectDB()
 	http.HandleFunc("/hello", getHello)
 
 	err := http.ListenAndServe(":3333", nil)
@@ -70,16 +77,24 @@ func sendMail(message string) {
 	}
 	fmt.Println("Email Sent Successfully")
 }
-func logEvent(message string) {
-	// ctx := context.Background()
 
-	// Open a PostgreSQL database.
-	dsn := "postgresql://postgres:postgres@localhost:5434/events"
+func connectDB() {
+	dsn := "postgresql://postgres:postgres@localhost:5434/sns-db?sslmode=disable"
 	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-
-	// Create a Bun db on top of it.
-	db := bun.NewDB(pgdb, pgdialect.New())
-
-	// Print all queries to stdout.
+	db = bun.NewDB(pgdb, pgdialect.New())
 	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+}
+
+func logEvent() {
+	event := events.Event{
+		Inserted_at: sql.NullTime{Time: time.Now(), Valid: true},
+		Ip_addr:     "1.1.1.1",
+		Mac_addr:    "00:00:00:00:00:00",
+		Subject:     "Test",
+		Message:     "This is a test",
+	}
+	_, err := db.NewInsert().Model(&event).Exec(context.Background())
+	if err != nil {
+		fmt.Printf("Error inserting event: %s\n", err)
+	}
 }
