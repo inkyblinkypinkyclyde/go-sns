@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,11 @@ import (
 	"net/http"
 	"net/smtp"
 	"os"
+
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/driver/pgdriver"
+	"github.com/uptrace/bun/extra/bundebug"
 )
 
 type EmailCreds struct {
@@ -34,7 +40,7 @@ func getHello(w http.ResponseWriter, r *http.Request) {
 }
 func main() {
 	getEmailCreds()
-	sendMail()
+	sendMail("This is just a test")
 	http.HandleFunc("/hello", getHello)
 
 	err := http.ListenAndServe(":3333", nil)
@@ -54,14 +60,26 @@ func getEmailCreds() {
 	fmt.Printf("SMTP Port is : %s\n", emailCreds.SmtpPort)
 }
 
-func sendMail() {
-	message := []byte("This is just a test")
+func sendMail(message string) {
+	body := []byte("Subject: go-sns notification\r\n" + message)
 	auth := smtp.PlainAuth("", emailCreds.Address, emailCreds.Password, emailCreds.SmtpHost)
-	err := smtp.SendMail(emailCreds.SmtpHost+":"+emailCreds.SmtpPort, auth, emailCreds.Address, []string{emailCreds.Address}, message)
+	err := smtp.SendMail(emailCreds.SmtpHost+":"+emailCreds.SmtpPort, auth, emailCreds.Address, []string{emailCreds.Address}, body)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	fmt.Println("Email Sent Successfully")
 }
-func logEvent() {}
+func logEvent(message string) {
+	// ctx := context.Background()
+
+	// Open a PostgreSQL database.
+	dsn := "postgresql://postgres:postgres@localhost:5434/events"
+	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
+
+	// Create a Bun db on top of it.
+	db := bun.NewDB(pgdb, pgdialect.New())
+
+	// Print all queries to stdout.
+	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+}
