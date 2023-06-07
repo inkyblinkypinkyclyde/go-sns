@@ -5,16 +5,13 @@ import (
 	"database/sql"
 	_ "embed"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"net/smtp"
-	"os"
 	"time"
 
 	events "go-sns/models"
 
+	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
@@ -35,28 +32,14 @@ var (
 	db         *bun.DB
 )
 
-func getRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("got / request\n")
-	io.WriteString(w, "This is my website!\n")
-}
-func getHello(w http.ResponseWriter, r *http.Request) {
-	logEvent()
-	fmt.Printf("got /hello request\n")
-	io.WriteString(w, "Hello, HTTP!\n")
-}
 func main() {
 	getEmailCreds()
-	sendMail("This is just a test")
+	sendMail("go-sns is running")
 	connectDB()
-	http.HandleFunc("/hello", getHello)
 
-	err := http.ListenAndServe(":3333", nil)
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Printf("server closed\n")
-	} else if err != nil {
-		fmt.Printf("error starting server: %s\n", err)
-		os.Exit(1)
-	}
+	router := gin.Default()
+	router.GET(":ip_addr/:mac_addr/:subject/:message", recieveNewEvent)
+	router.Run(":8080")
 }
 
 func getEmailCreds() {
@@ -85,16 +68,27 @@ func connectDB() {
 	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 }
 
-func logEvent() {
-	event := events.Event{
-		Inserted_at: sql.NullTime{Time: time.Now(), Valid: true},
-		Ip_addr:     "1.1.1.1",
-		Mac_addr:    "00:00:00:00:00:00",
-		Subject:     "Test",
-		Message:     "This is a test",
-	}
+func logEvent(event events.Event) {
 	_, err := db.NewInsert().Model(&event).Exec(context.Background())
 	if err != nil {
 		fmt.Printf("Error inserting event: %s\n", err)
 	}
+}
+
+func recieveNewEvent(c *gin.Context) {
+	ip_addr := c.Param("ip_addr")
+	mac_addr := c.Param("mac_addr")
+	subject := c.Param("subject")
+	message := c.Param("message")
+	// fmt.Printf("column: %s, datum: %s\n", column, datum)
+	event := events.Event{
+		Inserted_at: sql.NullTime{Time: time.Now(), Valid: true},
+		Ip_addr:     ip_addr,
+		Mac_addr:    mac_addr,
+		Subject:     subject,
+		Message:     message,
+	}
+	logEvent(event)
+	emailString := fmt.Sprintf("New event logged from\nIP: %s\nMAC: %s\nSubject: %s\nMessage: %s\n", ip_addr, mac_addr, subject, message)
+	sendMail(emailString)
 }
