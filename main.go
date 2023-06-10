@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
-	"encoding/json"
 	"fmt"
-	"net/smtp"
 	"time"
 
+	"go-sns/email"
 	events "go-sns/models"
 
 	"github.com/gin-gonic/gin"
@@ -27,38 +26,20 @@ type EmailCreds struct {
 
 var (
 	//go:embed emailcreds.json
-	rawJson    string
-	emailCreds EmailCreds
-	db         *bun.DB
+	rawJson        string
+	db             *bun.DB
+	emailConfig, _ = email.GetConfig(rawJson)
+	emailService   = email.NewEmailService(emailConfig)
 )
 
 func main() {
-	getEmailCreds()
-	sendMail("go-sns is running")
+	SendMail(emailService, emailConfig, "go-sns is running", "go-sns is running")
+
 	connectDB()
 
 	router := gin.Default()
 	router.GET(":ip_addr/:mac_addr/:subject/:message", recieveNewEvent)
 	router.Run(":8080")
-}
-
-func getEmailCreds() {
-	json.Unmarshal([]byte(rawJson), &emailCreds)
-	fmt.Printf("Email address: %s\n", emailCreds.Address)
-	fmt.Printf("Email password: %s\n", emailCreds.Password)
-	fmt.Printf("SMTP Host is : %s\n", emailCreds.SmtpHost)
-	fmt.Printf("SMTP Port is : %s\n", emailCreds.SmtpPort)
-}
-
-func sendMail(message string) {
-	body := []byte("Subject: go-sns notification\r\n" + message)
-	auth := smtp.PlainAuth("", emailCreds.Address, emailCreds.Password, emailCreds.SmtpHost)
-	err := smtp.SendMail(emailCreds.SmtpHost+":"+emailCreds.SmtpPort, auth, emailCreds.Address, []string{emailCreds.Address}, body)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("Email Sent Successfully")
 }
 
 func connectDB() {
@@ -72,6 +53,13 @@ func logEvent(event events.Event) {
 	_, err := db.NewInsert().Model(&event).Exec(context.Background())
 	if err != nil {
 		fmt.Printf("Error inserting event: %s\n", err)
+	}
+}
+
+func SendMail(emailService *email.EmailService, emailConfig *email.EmailCreds, title, message string) {
+	err := emailService.SendMail(email.ComposeEmail(emailConfig.Address, []string{emailConfig.Address}, title, message))
+	if err != nil {
+		fmt.Printf("Error sending email: %s\n", err)
 	}
 }
 
@@ -89,6 +77,6 @@ func recieveNewEvent(c *gin.Context) {
 		Message:     message,
 	}
 	logEvent(event)
-	emailString := fmt.Sprintf("New event logged from\nIP: %s\nMAC: %s\nSubject: %s\nMessage: %s\n", ip_addr, mac_addr, subject, message)
-	sendMail(emailString)
+	SendMail(emailService, emailConfig, subject, message)
+
 }

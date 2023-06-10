@@ -1,0 +1,6 @@
+{
+    "Address": "username@domain.co.uk",
+    "Password": "password",
+    "SmtpHost": "smtp.domain.co.uk",
+    "SmtpPort": 587
+}
