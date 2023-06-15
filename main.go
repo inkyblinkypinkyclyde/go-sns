@@ -43,7 +43,7 @@ func main() {
 }
 
 func connectDB() {
-	dsn := "postgresql://postgres:postgres@localhost:5434/sns-db?sslmode=disable"
+	dsn := "postgresql://postgres:postgres@localhost:5435/sns-db?sslmode=disable"
 	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
 	db = bun.NewDB(pgdb, pgdialect.New())
 	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
