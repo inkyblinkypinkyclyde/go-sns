@@ -39,7 +39,7 @@ func main() {
 
 	router := gin.Default()
 	router.GET("http/:ip_addr/:mac_addr/:subject/:message", recieveNewEventHttp)
-	router.Run(":80")
+	router.Run(":8080")
 }
 
 func connectDB() {
