@@ -12,11 +12,6 @@ type EmailCreds struct {
 	SmtpPort int
 }
 
-var (
-	//go:embed emailcreds.json
-	jsonString string
-)
-
 func GetConfig(jsonString string) (*EmailCreds, error) {
 	var emailCreds EmailCreds
 	if err := json.Unmarshal([]byte(jsonString), &emailCreds); err != nil {

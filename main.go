@@ -33,13 +33,13 @@ var (
 )
 
 func main() {
-	SendMail(emailService, emailConfig, "go-sns is running", "go-sns is running")
+	// SendMail(emailService, emailConfig, "go-sns is running", "go-sns is running")
 
 	connectDB()
 
 	router := gin.Default()
-	router.GET(":ip_addr/:mac_addr/:subject/:message", recieveNewEvent)
-	router.Run(":8080")
+	router.GET("http/:ip_addr/:mac_addr/:subject/:message", recieveNewEventHttp)
+	router.Run(":80")
 }
 
 func connectDB() {
@@ -63,12 +63,11 @@ func SendMail(emailService *email.EmailService, emailConfig *email.EmailCreds, t
 	}
 }
 
-func recieveNewEvent(c *gin.Context) {
+func recieveNewEventHttp(c *gin.Context) {
 	ip_addr := c.Param("ip_addr")
 	mac_addr := c.Param("mac_addr")
 	subject := c.Param("subject")
 	message := c.Param("message")
-	// fmt.Printf("column: %s, datum: %s\n", column, datum)
 	event := events.Event{
 		Inserted_at: sql.NullTime{Time: time.Now(), Valid: true},
 		Ip_addr:     ip_addr,
@@ -77,6 +76,7 @@ func recieveNewEvent(c *gin.Context) {
 		Message:     message,
 	}
 	logEvent(event)
-	SendMail(emailService, emailConfig, subject, message)
+	messageBody := emailService.MessageBuilder(event)
+	SendMail(emailService, emailConfig, subject, messageBody)
 
 }
