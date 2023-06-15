@@ -68,7 +68,6 @@ func recieveNewEventHttp(c *gin.Context) {
 	mac_addr := c.Param("mac_addr")
 	subject := c.Param("subject")
 	message := c.Param("message")
-	// fmt.Printf("column: %s, datum: %s\n", column, datum)
 	event := events.Event{
 		Inserted_at: sql.NullTime{Time: time.Now(), Valid: true},
 		Ip_addr:     ip_addr,
