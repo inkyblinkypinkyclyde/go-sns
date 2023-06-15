@@ -33,7 +33,7 @@ var (
 )
 
 func main() {
-	// SendMail(emailService, emailConfig, "go-sns is running", "go-sns is running")
+	SendMail(emailService, emailConfig, "go-sns is running", "go-sns is running")
 
 	connectDB()
 
