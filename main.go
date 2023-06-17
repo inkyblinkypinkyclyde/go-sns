@@ -78,5 +78,4 @@ func recieveNewEventHttp(c *gin.Context) {
 	logEvent(event)
 	messageBody := emailService.MessageBuilder(event)
 	SendMail(emailService, emailConfig, subject, messageBody)
-
 }

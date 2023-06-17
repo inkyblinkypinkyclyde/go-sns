@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: sns-db
     ports:
-      - "5434:5432"
+      - "5435:5432"
     volumes:
       - ./go_sns_volumes:/home/go_sns_volumes
       - ./sql_scripts:/docker-entrypoint-initdb.d
