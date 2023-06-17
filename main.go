@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"time"
 
+	db "go-sns/db"
 	"go-sns/email"
-	events "go-sns/models"
+	ingestion "go-sns/ingestion"
+	models "go-sns/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
-	"github.com/uptrace/bun/driver/pgdriver"
-	"github.com/uptrace/bun/extra/bundebug"
 )
 
 type EmailCreds struct {
@@ -27,30 +26,30 @@ type EmailCreds struct {
 var (
 	//go:embed emailcreds.json
 	rawJson        string
-	db             *bun.DB
+	myDb           *bun.DB
 	emailConfig, _ = email.GetConfig(rawJson)
 	emailService   = email.NewEmailService(emailConfig)
 )
 
 func main() {
 	SendMail(emailService, emailConfig, "go-sns is running", "go-sns is running")
-
-	connectDB()
+	ingestion.IngestMessages()
+	myDb = db.ConnectDB()
 
 	router := gin.Default()
 	router.GET("http/:ip_addr/:mac_addr/:subject/:message", recieveNewEventHttp)
 	router.Run(":8080")
 }
 
-func connectDB() {
-	dsn := "postgresql://postgres:postgres@localhost:5435/sns-db?sslmode=disable"
-	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-	db = bun.NewDB(pgdb, pgdialect.New())
-	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
-}
+// func connectDB() {
+// 	dsn := "postgresql://postgres:postgres@localhost:5435/sns-db?sslmode=disable"
+// 	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
+// 	db = bun.NewDB(pgdb, pgdialect.New())
+// 	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+// }
 
-func logEvent(event events.Event) {
-	_, err := db.NewInsert().Model(&event).Exec(context.Background())
+func logEvent(event models.Event) {
+	_, err := myDb.NewInsert().Model(&event).Exec(context.Background())
 	if err != nil {
 		fmt.Printf("Error inserting event: %s\n", err)
 	}
@@ -68,7 +67,7 @@ func recieveNewEventHttp(c *gin.Context) {
 	mac_addr := c.Param("mac_addr")
 	subject := c.Param("subject")
 	message := c.Param("message")
-	event := events.Event{
+	event := models.Event{
 		Inserted_at: sql.NullTime{Time: time.Now(), Valid: true},
 		Ip_addr:     ip_addr,
 		Mac_addr:    mac_addr,

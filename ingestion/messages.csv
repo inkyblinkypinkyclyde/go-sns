@@ -1,0 +1,5 @@
+code	subject	body
+st	go-sns started	go-sns has started successfully
+sh	A system is shutting down	The attached system is attempting to shutdown
+tc	Task Complete	A task has been completed
+tf	Task Failed	A task has failed

@@ -9,6 +9,7 @@ ID  SERIAL PRIMARY KEY
 
 CREATE TABLE IF NOT EXISTS "messages"(
     ID SERIAL PRIMARY KEY
-    , "message" VARCHAR NOT NULL
     , "code" VARCHAR NOT NULL
+    , "subject" VARCHAR NOT NULL
+    , "body" VARCHAR NOT NULL
 );
