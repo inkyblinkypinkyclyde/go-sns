@@ -29,4 +29,4 @@ gateway=$(ip route | awk '/default/ {print $3}')
 interface=$(ip route get $gateway | awk '/dev/ {print $3}')
 mac_address=$(ip link show dev $interface | awk '/ether/ {gsub(/:/,""); print $2}')
 ip_address=$(hostname -I | awk '{print $1}' | awk -F. '{print $NF}')
-curl 192.168.1.17:8080/http/$ip_address/$mac_address/Task%20Completed/$url_encoded_string
+curl 192.168.1.17:8080/http/$ip_address/$mac_address/New%20Event%20From%20Bash%20Script/$url_encoded_string
