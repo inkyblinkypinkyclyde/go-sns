@@ -28,4 +28,4 @@ gateway=$(route -n get default | grep 'gateway' | awk '{print $2}')
 interface=$(route -n get default | grep 'interface' | awk '{print $2}')
 mac_address=$(ifconfig $interface | awk '/ether/ {gsub(/:/,""); print $2}')
 ipSuffix=$(ifconfig | awk '/inet / {print $2}' | awk -F. '{print $NF}' | tail -n 1)
-curl 192.168.1.17:8080/http/$ipSuffix/$mac_address/Task%20Completed/$url_encoded_string
+curl 192.168.1.27:8080/http/$ipSuffix/$mac_address/Task%20Completed/$url_encoded_string
