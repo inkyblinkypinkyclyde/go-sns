@@ -9,7 +9,7 @@ import (
 
 	db "go-sns/db"
 	"go-sns/email"
-	ingestion "go-sns/ingestion"
+	"go-sns/ingestion"
 	models "go-sns/models"
 
 	"github.com/gin-gonic/gin"
@@ -32,21 +32,14 @@ var (
 )
 
 func main() {
-	SendMail(emailService, emailConfig, "go-sns is running", "go-sns is running")
-	ingestion.IngestMessages()
+	// SendMail(emailService, emailConfig, "go-sns is running", "go-sns is running")
 	myDb = db.ConnectDB()
+	ingestion.IngestMessages(myDb)
 
 	router := gin.Default()
 	router.GET("http/:ip_addr/:mac_addr/:subject/:message", recieveNewEventHttp)
 	router.Run(":8080")
 }
-
-// func connectDB() {
-// 	dsn := "postgresql://postgres:postgres@localhost:5435/sns-db?sslmode=disable"
-// 	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-// 	db = bun.NewDB(pgdb, pgdialect.New())
-// 	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
-// }
 
 func logEvent(event models.Event) {
 	_, err := myDb.NewInsert().Model(&event).Exec(context.Background())

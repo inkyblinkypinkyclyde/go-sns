@@ -1,30 +1,46 @@
 package ingestion
 
 import (
+	"context"
 	"fmt"
-
-	db "go-sns/db"
+	"go-sns/models"
 
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/uptrace/bun"
 )
 
-var (
-	myDb *bun.DB
-)
+func IngestMessages(myDb *bun.DB) {
+	file := "ingestion/messages.xlsx"
+	messages := ingest(file)
+	for _, message := range messages {
+		_, err := myDb.NewInsert().Model(&message).Exec(context.Background())
+		if err != nil {
+			fmt.Printf("Error inserting messages: %s\n", err)
+		}
+	}
+}
 
-func IngestMessages() {
-	f, err := excelize.OpenFile("messages.xlsx")
-	if err != nil {
-		fmt.Println(err)
+func ingest(file string) []models.Message {
+	f, err1 := excelize.OpenFile(file)
+	if err1 != nil {
+		fmt.Println(err1)
 		fmt.Printf("Error opening file")
-		return
+		return nil
 	}
 
 	firstSheet := f.WorkBook.Sheets.Sheet[0].Name
 
+	var messages []models.Message
+
 	rows := f.GetRows(firstSheet)
-	fmt.Println(rows)
-	myDb := db.ConnectDB()
-	myDb.NewInsert()
+	for _, row := range rows {
+		messages = append(messages, models.Message{
+			Code:    row[0],
+			Subject: row[1],
+			Body:    row[2],
+		})
+
+	}
+
+	return messages
 }
