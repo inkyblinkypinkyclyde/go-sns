@@ -32,8 +32,15 @@ func (s *SpyMailSendOperations) SendMail() {
 	s.Calls++
 }
 
-// for normal use
+type SpyEventLoggingOperation struct {
+	Events []models.Event
+}
 
+func (s *SpyEventLoggingOperation) LogEvent(event models.Event) {
+	s.Events = append(s.Events, event)
+}
+
+// for normal use
 type DefaultMailSender struct {
 }
 
@@ -44,6 +51,16 @@ func (d *DefaultMailSender) SendMail(emailService *email.EmailService, emailConf
 	}
 }
 
+type DefaultEventLogger struct {
+}
+
+func (d *DefaultEventLogger) LogEvent(event models.Event) {
+	_, err := myDb.NewInsert().Model(&event).Exec(context.Background())
+	if err != nil {
+		fmt.Printf("Error inserting event: %s\n", err)
+	}
+}
+
 var (
 	//go:embed emailcreds.json
 	rawJson        string
@@ -51,10 +68,10 @@ var (
 	emailConfig, _ = email.GetConfig(rawJson)
 	emailService   = email.NewEmailService(emailConfig)
 	mailSender     = &DefaultMailSender{}
+	eventLogger    = &DefaultEventLogger{}
 )
 
 func main() {
-	// SendMail(emailService, emailConfig, "go-sns is running", "go-sns is running")
 	myDb = db.ConnectDB()
 	ingestion.IngestMessages(myDb)
 
@@ -64,18 +81,8 @@ func main() {
 }
 
 func LogEvent(event models.Event) {
-	_, err := myDb.NewInsert().Model(&event).Exec(context.Background())
-	if err != nil {
-		fmt.Printf("Error inserting event: %s\n", err)
-	}
-}
 
-// func SendMail(emailService *email.EmailService, emailConfig *email.EmailCreds, title, message string) {
-// 	err := emailService.SendMail(email.ComposeEmail(emailConfig.Address, []string{emailConfig.Address}, title, message))
-// 	if err != nil {
-// 		fmt.Printf("Error sending email: %s\n", err)
-// 	}
-// }
+}
 
 func RecieveNewEventHttp(c *gin.Context) {
 	ip_addr := c.Param("ip_addr")
@@ -89,7 +96,7 @@ func RecieveNewEventHttp(c *gin.Context) {
 		Subject:     subject,
 		Message:     message,
 	}
-	LogEvent(event)
 	messageBody := emailService.MessageBuilder(event)
+	eventLogger.LogEvent(event)
 	mailSender.SendMail(emailService, emailConfig, subject, messageBody)
 }
