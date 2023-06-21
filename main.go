@@ -23,12 +23,34 @@ type EmailCreds struct {
 	SmtpPort string
 }
 
+// for use in mocking only
+type SpyMailSendOperations struct {
+	Calls int
+}
+
+func (s *SpyMailSendOperations) SendMail() {
+	s.Calls++
+}
+
+// for normal use
+
+type DefaultMailSender struct {
+}
+
+func (d *DefaultMailSender) SendMail(emailService *email.EmailService, emailConfig *email.EmailCreds, title, message string) {
+	err := emailService.SendMail(email.ComposeEmail(emailConfig.Address, []string{emailConfig.Address}, title, message))
+	if err != nil {
+		fmt.Printf("Error sending email: %s\n", err)
+	}
+}
+
 var (
 	//go:embed emailcreds.json
 	rawJson        string
 	myDb           *bun.DB
 	emailConfig, _ = email.GetConfig(rawJson)
 	emailService   = email.NewEmailService(emailConfig)
+	mailSender     = &DefaultMailSender{}
 )
 
 func main() {
@@ -37,25 +59,25 @@ func main() {
 	ingestion.IngestMessages(myDb)
 
 	router := gin.Default()
-	router.GET("http/:ip_addr/:mac_addr/:subject/:message", recieveNewEventHttp)
+	router.GET("http/:ip_addr/:mac_addr/:subject/:message", RecieveNewEventHttp)
 	router.Run(":8080")
 }
 
-func logEvent(event models.Event) {
+func LogEvent(event models.Event) {
 	_, err := myDb.NewInsert().Model(&event).Exec(context.Background())
 	if err != nil {
 		fmt.Printf("Error inserting event: %s\n", err)
 	}
 }
 
-func SendMail(emailService *email.EmailService, emailConfig *email.EmailCreds, title, message string) {
-	err := emailService.SendMail(email.ComposeEmail(emailConfig.Address, []string{emailConfig.Address}, title, message))
-	if err != nil {
-		fmt.Printf("Error sending email: %s\n", err)
-	}
-}
+// func SendMail(emailService *email.EmailService, emailConfig *email.EmailCreds, title, message string) {
+// 	err := emailService.SendMail(email.ComposeEmail(emailConfig.Address, []string{emailConfig.Address}, title, message))
+// 	if err != nil {
+// 		fmt.Printf("Error sending email: %s\n", err)
+// 	}
+// }
 
-func recieveNewEventHttp(c *gin.Context) {
+func RecieveNewEventHttp(c *gin.Context) {
 	ip_addr := c.Param("ip_addr")
 	mac_addr := c.Param("mac_addr")
 	subject := c.Param("subject")
@@ -67,7 +89,7 @@ func recieveNewEventHttp(c *gin.Context) {
 		Subject:     subject,
 		Message:     message,
 	}
-	logEvent(event)
+	LogEvent(event)
 	messageBody := emailService.MessageBuilder(event)
-	SendMail(emailService, emailConfig, subject, messageBody)
+	mailSender.SendMail(emailService, emailConfig, subject, messageBody)
 }
