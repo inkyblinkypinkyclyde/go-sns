@@ -1,5 +1,3 @@
-version: '1'
-
 services:
   go-sns:
     image: "postgres:11"
