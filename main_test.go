@@ -23,7 +23,6 @@ var (
 	}
 )
 
-// for use in mocking only
 type SpyMailSender struct {
 }
 

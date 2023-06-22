@@ -23,7 +23,6 @@ type EmailCreds struct {
 	SmtpPort string
 }
 
-// for normal use
 type IMailSender interface {
 	SendMail(*email.EmailService, *email.EmailCreds, string, string)
 }
