@@ -65,6 +65,28 @@ func TestRecieveEventAndLog(t *testing.T) {
 		spyEventLogger.LogEvent(event)
 		assert.Equal(t, events[0], event)
 	})
+
+	t.Run("Should clear events", func(t *testing.T) {
+		teardown()
+		newMailSender := &SpyMailSender{}
+		newEventLogger := &SpyEventLogger{}
+
+		receiver := &DefaultReceiver{
+			EventLogger: newEventLogger,
+			MailSender:  newMailSender,
+			Event: models.EventRaw{
+				Ip_addr:  "1",
+				Mac_addr: "2",
+				Subject:  "subject",
+				Message:  "message",
+			},
+		}
+		receiver.ClearEvent()
+		assert.Equal(t, "", receiver.Event.Ip_addr)
+		assert.Equal(t, "", receiver.Event.Mac_addr)
+		assert.Equal(t, "", receiver.Event.Subject)
+		assert.Equal(t, "", receiver.Event.Message)
+	})
 	t.Run("Should send mail and log event when request is recieved", func(y *testing.T) {
 		teardown()
 		newMailSender := &SpyMailSender{}

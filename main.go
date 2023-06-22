@@ -55,7 +55,25 @@ type DefaultReceiver struct {
 	Event       models.EventRaw
 }
 
+func (d *DefaultReceiver) GetMessageByCode(code string) {
+	var messages []models.Message
+
+	err := myDb.NewSelect().
+		Model(&messages).
+		Where("code = ?", code).
+		Scan(context.Background())
+
+	if err != nil {
+		fmt.Printf("Error selecting code from db: %s", err)
+	}
+	d.Event.Subject = messages[0].Subject
+	d.Event.Message = messages[0].Body
+}
+
 func (d *DefaultReceiver) ProcessEvent(now sql.NullTime) {
+	if d.Event.Message == "bun" {
+		d.GetMessageByCode(d.Event.Subject)
+	}
 	event := models.Event{
 		Inserted_at: now,
 		Ip_addr:     d.Event.Ip_addr,
@@ -74,6 +92,14 @@ func (d *DefaultReceiver) RecieveNewEventHttp(c *gin.Context) { // TODO: test th
 	d.Event.Subject = c.Param("subject")
 	d.Event.Message = c.Param("message")
 	d.ProcessEvent(sql.NullTime{Time: time.Now(), Valid: true})
+	d.ClearEvent()
+}
+
+func (d *DefaultReceiver) ClearEvent() {
+	d.Event.Ip_addr = ""
+	d.Event.Mac_addr = ""
+	d.Event.Subject = ""
+	d.Event.Message = ""
 }
 
 var (

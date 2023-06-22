@@ -13,8 +13,6 @@ type EmailService struct {
 }
 
 func NewEmailService(creds *EmailCreds) *EmailService {
-	fmt.Println("NewEmailService")
-	fmt.Println(creds)
 	return &EmailService{
 		dialer: gomail.NewDialer(creds.SmtpHost, creds.SmtpPort, creds.Address, creds.Password),
 	}
