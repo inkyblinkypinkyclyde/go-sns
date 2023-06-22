@@ -55,7 +55,7 @@ type DefaultReceiver struct {
 	Event       models.EventRaw
 }
 
-func (d *DefaultReceiver) GetMessageByCode(code string) {
+func (d *DefaultReceiver) GetMessageByCode(code string) { // TODO: test this function
 	var messages []models.Message
 
 	err := myDb.NewSelect().
