@@ -10,3 +10,6 @@ create-volumes:
 
 remove-volumes:
 	docker rm go_sns_volumes
+
+test:
+	go test -v ./...

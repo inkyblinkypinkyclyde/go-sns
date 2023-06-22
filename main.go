@@ -23,24 +23,10 @@ type EmailCreds struct {
 	SmtpPort string
 }
 
-// for use in mocking only
-type SpyMailSendOperations struct {
-	Calls int
-}
-
-func (s *SpyMailSendOperations) SendMail() {
-	s.Calls++
-}
-
-type SpyEventLoggingOperation struct {
-	Events []models.Event
-}
-
-func (s *SpyEventLoggingOperation) LogEvent(event models.Event) {
-	s.Events = append(s.Events, event)
-}
-
 // for normal use
+type IMailSender interface {
+	SendMail(*email.EmailService, *email.EmailCreds, string, string)
+}
 type DefaultMailSender struct {
 }
 
@@ -51,6 +37,9 @@ func (d *DefaultMailSender) SendMail(emailService *email.EmailService, emailConf
 	}
 }
 
+type IEventLogger interface {
+	LogEvent(models.Event)
+}
 type DefaultEventLogger struct {
 }
 
@@ -61,42 +50,50 @@ func (d *DefaultEventLogger) LogEvent(event models.Event) {
 	}
 }
 
+type DefaultReceiver struct {
+	MailSender  IMailSender
+	EventLogger IEventLogger
+	Event       models.EventRaw
+}
+
+func (d *DefaultReceiver) ProcessEvent(now sql.NullTime) {
+	event := models.Event{
+		Inserted_at: now,
+		Ip_addr:     d.Event.Ip_addr,
+		Mac_addr:    d.Event.Mac_addr,
+		Subject:     d.Event.Subject,
+		Message:     d.Event.Message,
+	}
+	messageBody := emailService.MessageBuilder(event)
+	d.EventLogger.LogEvent(event)
+	d.MailSender.SendMail(emailService, emailConfig, event.Subject, messageBody)
+}
+
+func (d *DefaultReceiver) RecieveNewEventHttp(c *gin.Context) { // TODO: test this function
+	d.Event.Ip_addr = c.Param("ip_addr")
+	d.Event.Mac_addr = c.Param("mac_addr")
+	d.Event.Subject = c.Param("subject")
+	d.Event.Message = c.Param("message")
+	d.ProcessEvent(sql.NullTime{Time: time.Now(), Valid: true})
+}
+
 var (
 	//go:embed emailcreds.json
 	rawJson        string
 	myDb           *bun.DB
 	emailConfig, _ = email.GetConfig(rawJson)
 	emailService   = email.NewEmailService(emailConfig)
-	mailSender     = &DefaultMailSender{}
-	eventLogger    = &DefaultEventLogger{}
 )
 
 func main() {
 	myDb = db.ConnectDB()
+	receiver := &DefaultReceiver{
+		EventLogger: &DefaultEventLogger{},
+		MailSender:  &DefaultMailSender{},
+	}
 	ingestion.IngestMessages(myDb)
 
 	router := gin.Default()
-	router.GET("http/:ip_addr/:mac_addr/:subject/:message", RecieveNewEventHttp)
+	router.GET("http/:ip_addr/:mac_addr/:subject/:message", receiver.RecieveNewEventHttp)
 	router.Run(":8080")
-}
-
-func LogEvent(event models.Event) {
-
-}
-
-func RecieveNewEventHttp(c *gin.Context) {
-	ip_addr := c.Param("ip_addr")
-	mac_addr := c.Param("mac_addr")
-	subject := c.Param("subject")
-	message := c.Param("message")
-	event := models.Event{
-		Inserted_at: sql.NullTime{Time: time.Now(), Valid: true},
-		Ip_addr:     ip_addr,
-		Mac_addr:    mac_addr,
-		Subject:     subject,
-		Message:     message,
-	}
-	messageBody := emailService.MessageBuilder(event)
-	eventLogger.LogEvent(event)
-	mailSender.SendMail(emailService, emailConfig, subject, messageBody)
 }
